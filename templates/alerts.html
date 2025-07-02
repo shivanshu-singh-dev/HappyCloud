@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="my-4">Weather Alerts</h2>
+
+    <form class="mb-4">
+        <div class="input-group">
+            <input type="text" class="form-control" name="location" placeholder="{{ location or 'Enter location' }}">
+            <button class="btn btn-primary" type="submit">Check Alerts</button>
+        </div>
+    </form>
+
+    {% if alerts %}
+    <div class="alert-list">
+        {% for alert in alerts %}
+        <div class="alert alert-{{ 'danger' if alert.severity == 'Extreme' else 'warning' }}">
+            <div class="d-flex justify-content-between">
+                <h5>{{ alert.event }}</h5>
+                <span class="badge bg-{{ 'danger' if alert.severity == 'Extreme' else 'warning' }}">
+                    {{ alert.severity }}
+                </span>
+            </div>
+            <p>{{ alert.description }}</p>
+            <small>Active: {{ alert.start }} to {{ alert.end }}</small>
+        </div>
+        {% endfor %}
+    </div>
+    {% else %}
+    <div class="alert alert-info">
+        No active alerts for {{ location or 'this location' }}
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

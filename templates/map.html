@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="my-4">Interactive Weather Map</h2>
+
+    <div class="card">
+        <div class="card-body p-0">
+            <div id="weatherMap" style="height: 500px;"></div>
+        </div>
+    </div>
+</div>
+
+<script>
+    const map = L.map('weatherMap').setView([20, 0], 2);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors'
+    }).addTo(map);
+
+    // Add weather overlay
+    L.weatherLayer({
+        apiKey: "{{ config['OPENWEATHERMAP_API_KEY'] }}",  <!-- Changed from app.config to config -->
+        temperatureUnit: 'C',
+        lang: 'en',
+        showLegend: true
+    }).addTo(map);
+
+    // Click handler
+    map.on('click', function (e) {
+        window.location.href = `/weather?lat=${e.latlng.lat}&lon=${e.latlng.lng}`;
+    });
+</script>
+{% endblock %}

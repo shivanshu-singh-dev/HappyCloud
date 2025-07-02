@@ -5,10 +5,12 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <title>{% block title %}HappyCloud{% endblock %}</title>
+
+    <!-- CSS Dependencies -->
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.12/css/weather-icons.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
-    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
+
     <!-- PWA Meta Tags -->
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#0d6efd">
@@ -16,14 +18,8 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
 
-    <!-- Service Worker Registration -->
-    <script>
-        if ('serviceWorker' in navigator) {
-            window.addEventListener('load', () => {
-                navigator.serviceWorker.register('{{ url_for("static", filename="sw.js") }}');
-            });
-        }
-    </script>
+    <!-- Leaflet CSS -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
     <style>
         :root {
@@ -46,20 +42,38 @@
             background-color: var(--bg-color);
             color: var(--text-color);
             transition: all 0.3s ease;
+            padding-top: 56px;
+            /* For fixed navbar */
         }
 
         .navbar {
             background-color: var(--navbar-color) !important;
+            position: fixed;
+            top: 0;
+            width: 100%;
+            z-index: 1000;
         }
 
         .card {
             background-color: var(--card-bg);
             border-color: rgba(0, 0, 0, 0.125);
+            margin-bottom: 1rem;
         }
 
         .form-control {
             background-color: var(--input-bg);
             color: var(--text-color);
+        }
+
+        /* Mobile optimizations */
+        @media (max-width: 768px) {
+            .navbar-collapse {
+                padding-bottom: 1rem;
+            }
+
+            .container {
+                padding-top: 1rem;
+            }
         }
     </style>
 </head>
@@ -67,20 +81,38 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark">
         <div class="container">
-            <a class="navbar-brand" href="/">HappyCloud</a>
+            <a class="navbar-brand" href="/">
+                <i class="wi wi-day-cloudy me-2"></i>HappyCloud
+            </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse" data-bs-target="#navbarContent">
                 <span class="navbar-toggler-icon"></span>
             </button>
             <div class="collapse navbar-collapse" id="navbarContent">
                 <ul class="navbar-nav me-auto">
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('weather') }}">Weather</a>
+                        <a class="nav-link" href="{{ url_for('weather') }}">
+                            <i class="wi wi-barometer"></i> Weather
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('forecast') }}">5-Day Forecast</a>
+                        <a class="nav-link" href="{{ url_for('forecast') }}">
+                            <i class="wi wi-day-cloudy-high"></i> Forecast
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('news') }}">News</a>
+                        <a class="nav-link" href="{{ url_for('weather_map') }}">
+                            <i class="bi bi-map"></i> Map
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('weather_alerts') }}">
+                            <i class="bi bi-exclamation-triangle"></i> Alerts
+                        </a>
+                    </li>
+                    <li class="nav-item">
+                        <a class="nav-link" href="{{ url_for('news') }}">
+                            <i class="bi bi-newspaper"></i> News
+                        </a>
                     </li>
                 </ul>
 
@@ -88,24 +120,29 @@
                     {% if current_user.is_authenticated %}
                     <li class="nav-item">
                         <a class="nav-link" href="{{ url_for('preferences') }}">
-                            <i class="bi bi-gear"></i> Preferences
+                            <i class="bi bi-gear"></i> Settings
                         </a>
                     </li>
-
                     <li class="nav-item">
                         <button class="btn btn-link nav-link" onclick="toggleTheme()">
                             <i class="bi" id="theme-icon"></i> Theme
                         </button>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('logout') }}">Logout</a>
+                        <a class="nav-link" href="{{ url_for('logout') }}">
+                            <i class="bi bi-box-arrow-right"></i> Logout
+                        </a>
                     </li>
                     {% else %}
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('login') }}">Login</a>
+                        <a class="nav-link" href="{{ url_for('login') }}">
+                            <i class="bi bi-box-arrow-in-right"></i> Login
+                        </a>
                     </li>
                     <li class="nav-item">
-                        <a class="nav-link" href="{{ url_for('register') }}">Register</a>
+                        <a class="nav-link" href="{{ url_for('register') }}">
+                            <i class="bi bi-person-plus"></i> Register
+                        </a>
                     </li>
                     {% endif %}
                 </ul>
@@ -128,9 +165,13 @@
         {% block content %}{% endblock %}
     </div>
 
+    <!-- JavaScript Dependencies -->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet.weather@0.1.0/dist/leaflet.weather.js"></script>
+
     <script>
-        // Set initial theme icon
+        // Theme Management
         function setThemeIcon(isDark) {
             const icon = document.getElementById('theme-icon');
             if (icon) {
@@ -138,7 +179,6 @@
             }
         }
 
-        // Check user preference or system preference
         function checkTheme() {
             const userTheme = "{{ current_user.theme if current_user.is_authenticated else '' }}";
             const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
@@ -153,9 +193,10 @@
 
 
 
-        // Initialize theme on page load
+        // Initialize
         document.addEventListener('DOMContentLoaded', checkTheme);
     </script>
+
     {% block scripts %}{% endblock %}
 </body>
 

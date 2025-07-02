@@ -1,4 +1,3 @@
-# Move all imports to top
 from flask import Flask, render_template, redirect, url_for, flash, request, jsonify
 from flask_login import LoginManager, UserMixin, login_user, logout_user, login_required, current_user
 from flask_sqlalchemy import SQLAlchemy
@@ -7,6 +6,7 @@ from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SubmitField, SelectField
 from wtforms.validators import InputRequired
 import requests
+import pytz
 from datetime import datetime, timedelta
 
 app = Flask(__name__)
@@ -14,6 +14,7 @@ app = Flask(__name__)
 # Configuration
 app.config['SECRET_KEY'] = 'your-secret-key-here'
 app.config['OPENWEATHERMAP_API_KEY'] = '3f30720cc3d8946f6df8ab9a53d4179d'
+app.config['NEWSAPI_KEY'] = '1738fff3200749e5b53bdc8205093f8d'
 app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -53,77 +54,83 @@ class User(UserMixin, db.Model):
 # --- Routes ---
 @app.route('/')
 def home():
-    # Get news data directly for homepage
-    news_api_key = "YOUR_NEWSAPI_KEY"
-    from_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
-    url = f"https://newsapi.org/v2/everything?q=weather&from={from_date}&sortBy=popularity&apiKey={news_api_key}"
-    
     try:
-        response = requests.get(url)
-        news_data = response.json().get('articles', [])[:3]  # Just 3 for homepage
+        url = f"https://newsapi.org/v2/everything?q=weather&from={(datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')}&sortBy=popularity&apiKey={app.config['NEWSAPI_KEY']}"
+        news_data = requests.get(url).json().get('articles', [])[:3]
     except:
         news_data = []
-    
-    return render_template('home.html', news=news_data) 
+    return render_template('home.html', news=news_data)
 
-@app.route('/set-theme', methods=['POST'])
-@login_required
-def set_theme():
-    data = request.get_json()
-    current_user.theme = data['theme']
-    db.session.commit()
-    return jsonify({'status': 'success'})
+@app.route('/map')
+def weather_map():
+    return render_template('map.html')
 
-@app.route('/offline')
-def offline():
-    return render_template('offline.html')
+@app.route('/alerts')
+def weather_alerts():
+    location = request.args.get('location', current_user.preferred_city if current_user.is_authenticated else None)
+    
+    if location:
+        try:
+            geo_url = f"http://api.openweathermap.org/geo/1.0/direct?q={location}&limit=1&appid={app.config['OPENWEATHERMAP_API_KEY']}"
+            geo_data = requests.get(geo_url).json()
+            
+            if geo_data:
+                lat, lon = geo_data[0]['lat'], geo_data[0]['lon']
+                alerts_url = f"https://api.openweathermap.org/data/3.0/onecall?lat={lat}&lon={lon}&exclude=minutely,hourly&appid={app.config['OPENWEATHERMAP_API_KEY']}"
+                weather_data = requests.get(alerts_url).json()
+                
+                processed_alerts = []
+                for alert in weather_data.get('alerts', []):
+                    processed_alerts.append({
+                        'event': alert['event'],
+                        'description': alert['description'],
+                        'start': datetime.fromtimestamp(alert['start'], pytz.utc).strftime('%b %d, %H:%M'),
+                        'end': datetime.fromtimestamp(alert['end'], pytz.utc).strftime('%b %d, %H:%M'),
+                        'severity': alert.get('tags', ['Moderate'])[0]
+                    })
+                return render_template('alerts.html', alerts=processed_alerts, location=location)
+        except Exception as e:
+            flash(f"Couldn't fetch alerts: {str(e)}")
+    
+    return render_template('alerts.html', alerts=[], location=location)
 
-@app.route('/news')
-def news():
-    news_api_key = "1738fff3200749e5b53bdc8205093f8d"  
-    from_date = (datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')
+@app.route('/weather', methods=['GET', 'POST'])
+def weather():
+    form = WeatherForm()
+    weather_data = None
     
-    url = f"https://newsapi.org/v2/everything?q=weather&from={from_date}&sortBy=popularity&apiKey={news_api_key}"
-    
-    try:
-        response = requests.get(url)
-        news_data = response.json().get('articles', [])[:5] 
-    except:
-        news_data = []
-    
-    return render_template('news.html', news=news_data)
-
-@app.route('/register', methods=['GET', 'POST'])
-def register():
-    form = RegistrationForm()
     if form.validate_on_submit():
-        hashed_password = generate_password_hash(form.password.data)
-        new_user = User(username=form.username.data, password=hashed_password)
-        db.session.add(new_user)
-        db.session.commit()
-        flash('Registration successful! Please login.')
-        return redirect(url_for('login'))
-    return render_template('register.html', form=form)
+        params = {
+            'q': form.city.data,
+            'appid': app.config['OPENWEATHERMAP_API_KEY'],
+            'units': 'metric'
+        }
+        response = requests.get("http://api.openweathermap.org/data/2.5/weather", params=params)
+        
+        if response.status_code == 200:
+            weather_data = response.json()
+            weather_data['sys']['sunrise'] = datetime.fromtimestamp(weather_data['sys']['sunrise']).strftime('%H:%M')
+            weather_data['sys']['sunset'] = datetime.fromtimestamp(weather_data['sys']['sunset']).strftime('%H:%M')
+            weather_data['recommendations'] = get_clothing_recommendation(weather_data)
+        else:
+            flash('City not found. Please try again.')
+    
+    return render_template('weather.html', form=form, weather=weather_data)
 
 @app.route('/forecast', methods=['GET', 'POST'])
-@login_required
 def forecast():
-    form = WeatherForm()  # Reuse the same form as current weather
+    form = WeatherForm()
     forecast_data = None
     
     if form.validate_on_submit():
-        city = form.city.data
-        api_key = app.config['OPENWEATHERMAP_API_KEY']
-        base_url = "http://api.openweathermap.org/data/2.5/forecast"
-        
         params = {
-            'q': city,
-            'appid': api_key,
+            'q': form.city.data,
+            'appid': app.config['OPENWEATHERMAP_API_KEY'],
             'units': 'metric',
-            'cnt': 40  # Get 5 days of data (8 forecasts per day)
+            'cnt': 40
         }
+        response = requests.get("http://api.openweathermap.org/data/2.5/forecast", params=params)
         
-        response = requests.get(base_url, params=params)
         if response.status_code == 200:
             forecast_data = process_forecast(response.json())
         else:
@@ -131,11 +138,11 @@ def forecast():
     
     return render_template('forecast.html', form=form, forecast=forecast_data)
 
+# --- Utility Functions ---
 def process_forecast(data):
-    """Group 3-hour forecasts into daily forecasts"""
     daily_data = {}
     for item in data['list']:
-        date = item['dt_txt'].split()[0]  # Extract just the date
+        date = item['dt_txt'].split()[0]
         if date not in daily_data:
             daily_data[date] = {
                 'temps': [],
@@ -145,17 +152,58 @@ def process_forecast(data):
         daily_data[date]['temps'].append(item['main']['temp'])
         daily_data[date]['weather'].append(item['weather'][0])
     
-    # Calculate daily averages
-    processed = []
-    for date, values in daily_data.items():
-        processed.append({
-            'date': values['date'],
-            'avg_temp': round(sum(values['temps']) / len(values['temps']), 1),
-            'icon': get_weather_icon(values['weather'][0]['id']),  # Use first weather icon
-            'description': values['weather'][0]['description']
-        })
+    return [{
+        'date': values['date'],
+        'avg_temp': round(sum(values['temps']) / len(values['temps']), 1),
+        'icon': get_weather_icon(values['weather'][0]['id']),
+        'description': values['weather'][0]['description']
+    } for date, values in daily_data.items()][:5]
+
+def get_clothing_recommendation(weather_data):
+    temp = weather_data['main']['temp']
+    conditions = weather_data['weather'][0]['main'].lower()
+    recommendations = []
     
-    return processed[:5]  # Return just 5 days
+    if temp < 0: recommendations.append("Heavy winter coat, gloves, scarf, and hat")
+    elif temp < 10: recommendations.append("Warm jacket and layers")
+    elif temp < 20: recommendations.append("Light jacket or sweater")
+    else: recommendations.append("Light clothing")
+    
+    if 'rain' in conditions: recommendations.append("Waterproof shoes and umbrella")
+    if 'snow' in conditions: recommendations.append("Snow boots and thermal layers")
+    if weather_data['main']['humidity'] > 80: recommendations.append("Breathable fabrics recommended")
+    
+    if 'uvi' in weather_data:
+        uv = weather_data['uvi']
+        if uv > 8: recommendations.append("SPF 50+ sunscreen essential")
+        elif uv > 5: recommendations.append("SPF 30+ sunscreen recommended")
+    
+    return recommendations
+
+def get_weather_icon(weather_id):
+    if 200 <= weather_id <= 232: return 'wi-thunderstorm'
+    elif 300 <= weather_id <= 321: return 'wi-sprinkle'
+    elif 500 <= weather_id <= 531: return 'wi-rain'
+    elif 600 <= weather_id <= 622: return 'wi-snow'
+    elif 701 <= weather_id <= 781: return 'wi-fog'
+    elif weather_id == 800: return 'wi-day-sunny'
+    elif 801 <= weather_id <= 804: return 'wi-cloudy'
+    return 'wi-day-cloudy'
+
+# --- Core App Functions ---
+@app.route('/register', methods=['GET', 'POST'])
+def register():
+    form = RegistrationForm()
+    if form.validate_on_submit():
+        user = User(
+            username=form.username.data,
+            password=generate_password_hash(form.password.data)
+        )
+        db.session.add(user)
+        db.session.commit()
+        flash('Registration successful! Please login.')
+        return redirect(url_for('login'))
+    return render_template('register.html', form=form)
 
 @app.route('/login', methods=['GET', 'POST'])
 def login():
@@ -174,33 +222,6 @@ def logout():
     logout_user()
     return redirect(url_for('home'))
 
-@app.route('/weather', methods=['GET', 'POST'])
-@login_required
-def weather():
-    form = WeatherForm()
-    weather_data = None
-    
-    if form.validate_on_submit():
-        city = form.city.data
-        api_key = app.config['OPENWEATHERMAP_API_KEY']
-        base_url = "http://api.openweathermap.org/data/2.5/weather"
-        
-        params = {
-            'q': city,
-            'appid': api_key,
-            'units': 'metric'
-        }
-        
-        response = requests.get(base_url, params=params)
-        if response.status_code == 200:
-            weather_data = response.json()
-            weather_data['sys']['sunrise'] = datetime.fromtimestamp(weather_data['sys']['sunrise']).strftime('%H:%M')
-            weather_data['sys']['sunset'] = datetime.fromtimestamp(weather_data['sys']['sunset']).strftime('%H:%M')
-        else:
-            flash('City not found. Please try again.')
-    
-    return render_template('weather.html', form=form, weather=weather_data)
-
 @app.route('/preferences', methods=['GET', 'POST'])
 @login_required
 def preferences():
@@ -211,30 +232,43 @@ def preferences():
         current_user.theme = form.theme.data
         db.session.commit()
         flash('Preferences updated!')
-        return redirect(url_for('preferences'))
     return render_template('preferences.html', form=form)
 
-# --- Utility Functions ---
-def get_weather_icon(weather_id):
-    """Map OpenWeatherMap weather codes to weather icons"""
-    if 200 <= weather_id <= 232: return 'wi-thunderstorm'
-    elif 300 <= weather_id <= 321: return 'wi-sprinkle'
-    elif 500 <= weather_id <= 531: return 'wi-rain'
-    elif 600 <= weather_id <= 622: return 'wi-snow'
-    elif 701 <= weather_id <= 781: return 'wi-fog'
-    elif weather_id == 800: return 'wi-day-sunny'
-    elif 801 <= weather_id <= 804: return 'wi-cloudy'
-    return 'wi-day-cloudy'
+@app.route('/set-theme', methods=['POST'])
+@login_required
+def set_theme():
+    current_user.theme = request.json['theme']
+    db.session.commit()
+    return jsonify({'status': 'success'})
 
-@app.context_processor
-def utility_processor():
-    return dict(get_weather_icon=get_weather_icon)
+@app.route('/offline')
+def offline():
+    return render_template('offline.html')
 
-# --- Initialization ---
+@app.route('/news')
+def news():
+    try:
+        url = f"https://newsapi.org/v2/everything?q=weather&from={(datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')}&sortBy=popularity&apiKey={app.config['NEWSAPI_KEY']}"
+        news_data = requests.get(url).json().get('articles', [])[:5]
+    except:
+        news_data = []
+    return render_template('news.html', news=news_data)
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
 
+@app.context_processor
+def inject_config():
+    return {
+        'config': {
+            'OPENWEATHERMAP_API_KEY': app.config['OPENWEATHERMAP_API_KEY']
+        }
+    }
+def utility_processor():
+    return dict(get_weather_icon=get_weather_icon)
+
+# --- Initialization ---
 with app.app_context():
     db.create_all()
 
