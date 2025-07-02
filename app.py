@@ -74,6 +74,10 @@ def set_theme():
     db.session.commit()
     return jsonify({'status': 'success'})
 
+@app.route('/offline')
+def offline():
+    return render_template('offline.html')
+
 @app.route('/news')
 def news():
     news_api_key = "1738fff3200749e5b53bdc8205093f8d"  

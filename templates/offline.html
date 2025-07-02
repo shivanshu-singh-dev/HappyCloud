@@ -1,0 +1,13 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container text-center mt-5">
+    <h1><i class="bi bi-cloud-off"></i> Offline</h1>
+    <p>You're currently offline. Some features may be limited.</p>
+    <div class="mt-3">
+        <button class="btn btn-primary" onclick="window.location.reload()">
+            Retry Connection
+        </button>
+    </div>
+</div>
+{% endblock %}
