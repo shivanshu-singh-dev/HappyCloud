@@ -268,6 +268,7 @@ def inject_config():
             'OPENWEATHERMAP_API_KEY': app.config['OPENWEATHERMAP_API_KEY']
         }
     }
+@app.context_processor
 def utility_processor():
     return dict(get_weather_icon=get_weather_icon)
 
