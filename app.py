@@ -20,12 +20,12 @@ app.config['OPENWEATHERMAP_API_KEY'] = os.getenv('OPENWEATHERMAP_API_KEY')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///users.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
-# Initialize extensions
+# extensions
 db = SQLAlchemy(app)
 login_manager = LoginManager(app)
 login_manager.login_view = 'login'
 
-# --- Forms ---
+#Forms
 class RegistrationForm(FlaskForm):
     username = StringField('Username', validators=[InputRequired()])
     password = PasswordField('Password', validators=[InputRequired()])
@@ -44,7 +44,7 @@ class PreferencesForm(FlaskForm):
     theme = SelectField('Theme', choices=[('light', 'Light'), ('dark', 'Dark')])
     submit = SubmitField('Save Preferences')
 
-# --- Models ---
+#User
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     username = db.Column(db.String(50), unique=True)
@@ -53,7 +53,7 @@ class User(UserMixin, db.Model):
     units = db.Column(db.String(10), default='metric')
     theme = db.Column(db.String(10), default='light')
 
-# --- Routes ---
+# Routes
 @app.route('/')
 def home():
     try:
@@ -141,7 +141,7 @@ def forecast():
     
     return render_template('forecast.html', form=form, forecast=forecast_data)
 
-# --- Utility Functions ---
+# Functions
 def process_forecast(data):
     daily_data = {}
     for item in data['list']:
@@ -193,7 +193,7 @@ def get_weather_icon(weather_id):
     elif 801 <= weather_id <= 804: return 'wi-cloudy'
     return 'wi-day-cloudy'
 
-# --- Core App Functions ---
+# Core App Functions
 @app.route('/register', methods=['GET', 'POST'])
 def register():
     form = RegistrationForm()
@@ -271,7 +271,7 @@ def inject_config():
 def utility_processor():
     return dict(get_weather_icon=get_weather_icon)
 
-# --- Initialization ---
+#  Initialization
 with app.app_context():
     db.create_all()
 
