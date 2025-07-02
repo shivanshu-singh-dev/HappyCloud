@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <h2 class="my-4">Weather Forecast</h2>
+
+    <form method="POST" class="mb-4">
+        {{ form.hidden_tag() }}
+        <div class="input-group">
+            {{ form.city(class="form-control", placeholder="Enter city name") }}
+            <div class="input-group-append">
+                {{ form.submit(class="btn btn-primary") }}
+            </div>
+        </div>
+    </form>
+
+    {% if weather %}
+    <div class="card shadow-sm">
+        <div class="card-body">
+            <div class="d-flex justify-content-between align-items-center mb-3">
+                <h3 class="card-title mb-0">{{ weather.name }}, {{ weather.sys.country }}</h3>
+                <span class="badge bg-primary">
+                    {{ weather.weather[0].description|capitalize }}
+                </span>
+            </div>
+
+            <div class="row">
+                <div class="col-md-6">
+                    <div class="d-flex align-items-center mb-4">
+                        <i class="wi {{ get_weather_icon(weather.weather[0].id) }} display-1 me-4"></i>
+                        <div>
+                            <h2 class="display-4 mb-0">{{ weather.main.temp|round(1) }}°C</h2>
+                            <small>Feels like {{ weather.main.feels_like|round(1) }}°C</small>
+                        </div>
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6">
+                            <p><i class="wi wi-humidity me-2"></i> Humidity: {{ weather.main.humidity }}%</p>
+                            <p><i class="wi wi-barometer me-2"></i> Pressure: {{ weather.main.pressure }} hPa</p>
+                        </div>
+                        <div class="col-6">
+                            <p><i class="wi wi-strong-wind me-2"></i> Wind: {{ weather.wind.speed }} m/s</p>
+                            {% if weather.visibility %}
+                            <p><i class="wi wi-day-sunny me-2"></i> Visibility: {{ (weather.visibility/1000)|round(1) }}
+                                km</p>
+                            {% endif %}
+                        </div>
+                    </div>
+                </div>
+
+                <div class="col-md-6">
+                    <div class="card bg-transparent border-0">
+                        <div class="card-body">
+                            <h5 class="card-title">Sunrise & Sunset</h5>
+                            <p><i class="wi wi-sunrise me-2"></i> Sunrise: {{ weather.sys.sunrise }}</p>
+                            <p><i class="wi wi-sunset me-2"></i> Sunset: {{ weather.sys.sunset }}</p>
+
+                            <h5 class="card-title mt-4">Temperature Range</h5>
+                            <p><i class="wi wi-thermometer me-2"></i> High: {{ weather.main.temp_max }}°C</p>
+                            <p><i class="wi wi-thermometer-exterior me-2"></i> Low: {{ weather.main.temp_min }}°C</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+</div>
+{% endblock %}

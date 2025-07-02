@@ -1,0 +1,112 @@
+{% extends "base.html" %}
+
+{% block content %}
+<div class="container">
+    <!-- Weather Dashboard Header -->
+    <div class="d-flex justify-content-between align-items-center mb-4">
+        <h2><i class="wi wi-barometer"></i> Weather Dashboard</h2>
+        <div class="btn-group">
+            <a href="{{ url_for('weather') }}" class="btn btn-outline-primary">
+                <i class="wi wi-day-sunny"></i> Current Weather
+            </a>
+            <a href="{{ url_for('forecast') }}" class="btn btn-outline-primary">
+                <i class="wi wi-forecast-io-partly-cloudy-day"></i> 5-Day Forecast
+            </a>
+        </div>
+    </div>
+
+    <!-- Main Content Row -->
+    <div class="row">
+        <!-- Weather Quick View Column -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <h4 class="mb-0"><i class="wi wi-thermometer"></i> Weather Quick Look</h4>
+                </div>
+                <div class="card-body">
+                    {% if current_user.is_authenticated and current_user.preferred_city %}
+                    <div class="text-center py-4">
+                        <h5>Your Preferred Location:</h5>
+                        <h3>{{ current_user.preferred_city }}</h3>
+                        <a href="{{ url_for('weather', city=current_user.preferred_city) }}"
+                            class="btn btn-primary mt-3">
+                            Check Weather
+                        </a>
+                    </div>
+                    {% else %}
+                    <div class="text-center py-4">
+                        <h5>Get Started</h5>
+                        <p class="text-muted">Set a preferred location or search any city</p>
+                        <div class="d-flex justify-content-center gap-2">
+                            <a href="{{ url_for('preferences') }}" class="btn btn-outline-primary">
+                                <i class="bi bi-gear"></i> Set Preferences
+                            </a>
+                            <a href="{{ url_for('weather') }}" class="btn btn-primary">
+                                <i class="wi wi-search"></i> Search Weather
+                            </a>
+                        </div>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+
+        <!-- Weather News Column -->
+        <div class="col-lg-6 mb-4">
+            <div class="card shadow-sm h-100">
+                <div class="card-header bg-primary text-white">
+                    <div class="d-flex justify-content-between align-items-center">
+                        <h4 class="mb-0"><i class="bi bi-newspaper"></i> Weather News</h4>
+                        <a href="{{ url_for('news') }}" class="btn btn-sm btn-light">
+                            View All <i class="bi bi-arrow-right"></i>
+                        </a>
+                    </div>
+                </div>
+                <div class="card-body p-0">
+                    {% if news %}
+                    <div class="list-group list-group-flush">
+                        {% for article in news[:3] %}
+                        <a href="{{ article.url }}" target="_blank" class="list-group-item list-group-item-action">
+                            <div class="d-flex align-items-center">
+                                {% if article.urlToImage %}
+                                <img src="{{ article.urlToImage }}" class="rounded me-3"
+                                    style="width: 80px; height: 60px; object-fit: cover;">
+                                {% endif %}
+                                <div>
+                                    <h6 class="mb-1">{{ article.title|truncate(70) }}</h6>
+                                    <small class="text-muted">
+                                        {{ article.source.name }} • {{ article.publishedAt[:10] }}
+                                    </small>
+                                </div>
+                            </div>
+                        </a>
+                        {% endfor %}
+                    </div>
+                    {% else %}
+                    <div class="text-center py-5">
+                        <i class="bi bi-cloud-sleet text-muted" style="font-size: 2rem;"></i>
+                        <p class="text-muted mt-2">No recent weather news available</p>
+                    </div>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Weather Alerts Section -->
+    <div class="row mt-4">
+        <div class="col-12">
+            <div class="card shadow-sm">
+                <div class="card-header bg-warning text-dark">
+                    <h4 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Weather Alerts</h4>
+                </div>
+                <div class="card-body">
+                    <div class="alert alert-info mb-0">
+                        <i class="bi bi-info-circle-fill"></i> No active alerts in your area.
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
