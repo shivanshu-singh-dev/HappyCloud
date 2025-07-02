@@ -8,14 +8,16 @@ from wtforms.validators import InputRequired
 import requests
 import pytz
 from datetime import datetime, timedelta
+import os
 
 app = Flask(__name__)
 
-# Configuration
-app.config['SECRET_KEY'] = 'your-secret-key-here'
-app.config['OPENWEATHERMAP_API_KEY'] = '3f30720cc3d8946f6df8ab9a53d4179d'
-app.config['NEWSAPI_KEY'] = '1738fff3200749e5b53bdc8205093f8d'
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///users.db'
+from dotenv import load_dotenv
+load_dotenv()  
+
+app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
+app.config['OPENWEATHERMAP_API_KEY'] = os.getenv('OPENWEATHERMAP_API_KEY')
+app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///users.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
 # Initialize extensions
@@ -63,7 +65,8 @@ def home():
 
 @app.route('/map')
 def weather_map():
-    return render_template('map.html')
+    return render_template('map.html', 
+        api_key=app.config['OPENWEATHERMAP_API_KEY'])
 
 @app.route('/alerts')
 def weather_alerts():

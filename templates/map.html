@@ -11,24 +11,47 @@
     </div>
 </div>
 
+<!-- Load Leaflet from CDN -->
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+
 <script>
-    const map = L.map('weatherMap').setView([20, 0], 2);
+    // Store API key in JavaScript variable
+    const apiKey = "{{ api_key }}";
 
-    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
-        attribution: '&copy; OpenStreetMap contributors'
-    }).addTo(map);
+    document.addEventListener('DOMContentLoaded', function () {
+        // Basic map initialization
+        const map = L.map('weatherMap').setView([20, 0], 2);
 
-    // Add weather overlay
-    L.weatherLayer({
-        apiKey: "{{ config['OPENWEATHERMAP_API_KEY'] }}",  <!-- Changed from app.config to config -->
-        temperatureUnit: 'C',
-        lang: 'en',
-        showLegend: true
-    }).addTo(map);
+        // Base map layer
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            attribution: '&copy; OpenStreetMap contributors'
+        }).addTo(map);
 
-    // Click handler
-    map.on('click', function (e) {
-        window.location.href = `/weather?lat=${e.latlng.lat}&lon=${e.latlng.lng}`;
+        // Test marker
+        L.marker([20, 0]).addTo(map)
+            .bindPopup('Your Location!')
+            .openPopup();
+
+        // Load weather layer only if API key exists
+        if (apiKey && apiKey !== '') {
+            loadWeatherLayer(map, apiKey);
+        }
     });
+
+    function loadWeatherLayer(map, apiKey) {
+        // Load weather plugin dynamically
+        const script = document.createElement('script');
+        script.src = 'https://unpkg.com/leaflet.weather@0.1.0/dist/leaflet.weather.js';
+        script.onload = function () {
+            L.weatherLayer({
+                apiKey: apiKey,
+                temperatureUnit: 'C',
+                lang: 'en',
+                showLegend: true
+            }).addTo(map);
+        };
+        document.head.appendChild(script);
+    }
 </script>
 {% endblock %}
