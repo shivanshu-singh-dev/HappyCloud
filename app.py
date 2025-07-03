@@ -58,11 +58,20 @@ class User(UserMixin, db.Model):
 @app.route('/')
 def home():
     try:
-        url = f"https://newsapi.org/v2/everything?q=weather&from={(datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')}&sortBy=popularity&apiKey={app.config['NEWSAPI_KEY']}"
-        news_data = requests.get(url).json().get('articles', [])[:3]
-    except:
+        url = f"https://gnews.io/api/v4/top-headlines?lang=en&country=in&topic=weather&token={app.config['NEWSAPI_KEY']}"
+        response = requests.get(url)
+        data = response.json()
+        news_data = data.get('articles', [])[:3]
+
+        print("News returned:", len(news_data))
+        print(news_data[0] if news_data else "No news")
+
+    except Exception as e:
+        print("Error fetching GNews:", e)
         news_data = []
+
     return render_template('home.html', news=news_data)
+
 
 @app.route('/map')
 def weather_map():
@@ -252,7 +261,7 @@ def offline():
 @app.route('/news')
 def news():
     try:
-        url = f"https://gnews.io/api/v4/top-headlines?lang=en&country=in&topic=weather&token={app.config['NEWS_API_KEY']}"
+        url = f"https://gnews.io/api/v4/top-headlines?lang=en&country=in&topic=weather&token={app.config['NEWSAPI_KEY']}"
         response = requests.get(url)
         data = response.json()
         news_data = data.get('articles', [])[:6]

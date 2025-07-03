@@ -68,14 +68,16 @@
                         {% for article in news[:3] %}
                         <a href="{{ article.url }}" target="_blank" class="list-group-item list-group-item-action">
                             <div class="d-flex align-items-center">
-                                {% if article.urlToImage %}
-                                <img src="{{ article.urlToImage }}" class="rounded me-3"
+                                {% if article.image %}
+                                <img src="{{ article.image }}" class="rounded me-3"
                                     style="width: 80px; height: 60px; object-fit: cover;">
                                 {% endif %}
                                 <div>
                                     <h6 class="mb-1">{{ article.title|truncate(70) }}</h6>
                                     <small class="text-muted">
-                                        {{ article.source.name }} • {{ article.publishedAt[:10] }}
+                                        {{ article.source.name if article.source and article.source.name else 'Unknown'
+                                        }}
+                                        • {{ article.publishedAt[:10] }}
                                     </small>
                                 </div>
                             </div>
@@ -91,22 +93,22 @@
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Weather Alerts Section -->
-    <div class="row mt-4">
-        <div class="col-12">
-            <div class="card shadow-sm">
-                <div class="card-header bg-warning text-dark">
-                    <h4 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Weather Alerts</h4>
-                </div>
-                <div class="card-body">
-                    <div class="alert alert-info mb-0">
-                        <i class="bi bi-info-circle-fill"></i> No active alerts in your area.
+
+        <!-- Weather Alerts Section -->
+        <div class="row mt-4">
+            <div class="col-12">
+                <div class="card shadow-sm">
+                    <div class="card-header bg-warning text-dark">
+                        <h4 class="mb-0"><i class="bi bi-exclamation-triangle-fill"></i> Weather Alerts</h4>
+                    </div>
+                    <div class="card-body">
+                        <div class="alert alert-info mb-0">
+                            <i class="bi bi-info-circle-fill"></i> No active alerts in your area.
+                        </div>
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
-{% endblock %}
+    {% endblock %}
