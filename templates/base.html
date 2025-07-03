@@ -10,13 +10,11 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/weather-icons/2.0.12/css/weather-icons.min.css">
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.10.0/font/bootstrap-icons.css">
 
-
     <link rel="manifest" href="{{ url_for('static', filename='manifest.json') }}">
     <meta name="theme-color" content="#0d6efd">
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <link rel="apple-touch-icon" href="{{ url_for('static', filename='icons/icon-192.png') }}">
-
 
     <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
 
@@ -42,7 +40,6 @@
             color: var(--text-color);
             transition: all 0.3s ease;
             padding-top: 56px;
-
         }
 
         .navbar {
@@ -63,7 +60,6 @@
             background-color: var(--input-bg);
             color: var(--text-color);
         }
-
 
         @media (max-width: 768px) {
             .navbar-collapse {
@@ -164,7 +160,7 @@
         {% block content %}{% endblock %}
     </div>
 
-    <!--JS--->
+    <!--JS-->
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
     <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
     <script src="https://unpkg.com/leaflet.weather@0.1.0/dist/leaflet.weather.js"></script>
@@ -177,20 +173,43 @@
             }
         }
 
-        function checkTheme() {
-            const userTheme = "{{ current_user.theme if current_user.is_authenticated else '' }}";
-            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-
-            if (userTheme === 'dark' || (!userTheme && systemDark)) {
+        function applyTheme(isDark) {
+            if (isDark) {
                 document.body.classList.add('dark-mode');
-                setThemeIcon(true);
             } else {
-                setThemeIcon(false);
+                document.body.classList.remove('dark-mode');
             }
+            setThemeIcon(isDark);
         }
 
+        function toggleTheme() {
+            const isDark = document.body.classList.contains('dark-mode');
+            const newTheme = isDark ? 'light' : 'dark';
+            applyTheme(!isDark);
+            localStorage.setItem('theme', newTheme);
 
+            {% if current_user.is_authenticated %}
+            fetch("/set-theme", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ theme: newTheme })
+            });
+            {% endif %}
+        }
 
+        function checkTheme() {
+            const userTheme = "{{ current_user.theme if current_user.is_authenticated else '' }}";
+            const storedTheme = localStorage.getItem('theme');
+            const systemDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+
+            if (userTheme) {
+                applyTheme(userTheme === 'dark');
+            } else if (storedTheme) {
+                applyTheme(storedTheme === 'dark');
+            } else {
+                applyTheme(systemDark);
+            }
+        }
 
         document.addEventListener('DOMContentLoaded', checkTheme);
     </script>
