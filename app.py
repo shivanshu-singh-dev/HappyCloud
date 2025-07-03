@@ -17,6 +17,7 @@ load_dotenv()
 
 app.config['SECRET_KEY'] = os.getenv('SECRET_KEY')
 app.config['OPENWEATHERMAP_API_KEY'] = os.getenv('OPENWEATHERMAP_API_KEY')
+app.config['NEWSAPI_KEY'] = os.getenv('NEWSAPI_KEY')
 app.config['SQLALCHEMY_DATABASE_URI'] = os.getenv('DATABASE_URL', 'sqlite:///users.db')
 app.config['SQLALCHEMY_TRACK_MODIFICATIONS'] = False
 
@@ -251,10 +252,18 @@ def offline():
 @app.route('/news')
 def news():
     try:
-        url = f"https://newsapi.org/v2/everything?q=weather&from={(datetime.now() - timedelta(days=7)).strftime('%Y-%m-%d')}&sortBy=popularity&apiKey={app.config['NEWSAPI_KEY']}"
-        news_data = requests.get(url).json().get('articles', [])[:5]
-    except:
+        url = f"https://gnews.io/api/v4/top-headlines?lang=en&country=in&topic=weather&token={app.config['NEWS_API_KEY']}"
+        response = requests.get(url)
+        data = response.json()
+        news_data = data.get('articles', [])[:6]
+
+        print("News returned:", len(news_data))
+        print(news_data[0] if news_data else "No news")
+
+    except Exception as e:
+        print("Error fetching GNews:", e)
         news_data = []
+
     return render_template('news.html', news=news_data)
 
 @login_manager.user_loader

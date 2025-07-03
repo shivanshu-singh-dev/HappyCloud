@@ -1,15 +1,15 @@
 {% extends "base.html" %}
-
 {% block content %}
 <div class="container">
-    <h2 class="my-4">News</h2>
+    <h2 class="my-4">Latest News</h2>
 
     <div class="row">
+        {% if news %}
         {% for article in news %}
         <div class="col-md-6 mb-4">
-            <div class="card h-100">
-                {% if article.urlToImage %}
-                <img src="{{ article.urlToImage }}" class="card-img-top" alt="News image"
+            <div class="card h-100 shadow-sm">
+                {% if article.image %}
+                <img src="{{ article.image }}" class="card-img-top" alt="News image"
                     style="max-height: 200px; object-fit: cover;">
                 {% endif %}
                 <div class="card-body">
@@ -26,13 +26,14 @@
                 </div>
             </div>
         </div>
+        {% endfor %}
         {% else %}
         <div class="col-12">
             <div class="alert alert-info">
-                No weather news articles found at this time.
+                No news articles found at this time.
             </div>
         </div>
-        {% endfor %}
+        {% endif %}
     </div>
 </div>
 {% endblock %}
